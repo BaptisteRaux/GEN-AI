@@ -123,7 +123,7 @@ This project provided hands-on experience in designing a distributed AI system, 
 
 Generative AI Usage Statement
 
-Generative AI tools were used transparently throughout this project to assist with code refactoring, documentation drafting, debugging, and architectural discussions. All final decisions, integrations, and validations were performed by the team.
+Generative AI tools were used transparently throughout this project to assist with code refactoring, documentation drafting, debugging, and architectural discussions (chatgpt). All final decisions, integrations, and validations were performed by the team.
 
 Conclusion
 
