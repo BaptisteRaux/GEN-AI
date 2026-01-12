@@ -1,87 +1,279 @@
-# LLM Council
+🏛️ LLM Council — Local & Distributed Multi-LLM System
+Project Overview
 
-![llmcouncil](header.jpg)
+This project implements a local and distributed version of the LLM Council, inspired by Andrej Karpathy’s idea of combining multiple Large Language Models (LLMs) to improve reasoning quality.
 
-The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
+Instead of relying on a single model, the system orchestrates multiple locally deployed LLMs, each running as an independent service. These models collaborate through a three-stage workflow: independent answers, peer review, and final synthesis by a dedicated Chairman model.
 
-In a bit more detail, here is what happens when you submit a query:
+The entire system runs without any cloud-based API. All inference is performed locally using Ollama, and all components communicate through REST APIs.
 
-1. **Stage 1: First opinions**. The user query is given to all LLMs individually, and the responses are collected. The individual responses are shown in a "tab view", so that the user can inspect them all one by one.
-2. **Stage 2: Review**. Each individual LLM is given the responses of the other LLMs. Under the hood, the LLM identities are anonymized so that the LLM can't play favorites when judging their outputs. The LLM is asked to rank them in accuracy and insight.
-3. **Stage 3: Final response**. The designated Chairman of the LLM Council takes all of the model's responses and compiles them into a single final answer that is presented to the user.
+Core Idea: Why an LLM Council?
 
-## Vibe Code Alert
+Single-model answers can be biased, incomplete, or fragile.
+The LLM Council approach introduces:
 
-This project was 99% vibe coded as a fun Saturday hack because I wanted to explore and evaluate a number of LLMs side by side in the process of [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438). It's nice and useful to see multiple responses side by side, and also the cross-opinions of all LLMs on each other's outputs. I'm not going to support it in any way, it's provided here as is for other people's inspiration and I don't intend to improve it. Code is ephemeral now and libraries are over, ask your LLM to change it in whatever way you like.
+Diversity of reasoning
 
-## Setup
+Self-critique between models
 
-### 1. Install Dependencies
+Aggregation of perspectives
 
-The project uses [uv](https://docs.astral.sh/uv/) for project management.
+Improved robustness of final answers
 
-**Backend:**
-```bash
-uv sync
-```
+The user is also able to inspect intermediate outputs, making the reasoning process transparent.
 
-**Frontend:**
-```bash
-cd frontend
-npm install
-cd ..
-```
+Council Workflow
+Stage 1 — First Opinions
 
-### 2. Configure API Key
+The user submits a prompt through the frontend UI.
 
-Create a `.env` file in the project root:
+The backend orchestrator forwards the query to each council member LLM.
 
-```bash
-OPENROUTER_API_KEY=sk-or-v1-...
-```
+Each LLM:
 
-Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purchase the credits you need, or sign up for automatic top up.
+Runs independently
 
-### 3. Configure Models (Optional)
+Uses its own local model
 
-Edit `backend/config.py` to customize the council:
+Produces its own answer
 
-```python
-COUNCIL_MODELS = [
-    "openai/gpt-5.1",
-    "google/gemini-3-pro-preview",
-    "anthropic/claude-sonnet-4.5",
-    "x-ai/grok-4",
-]
+All responses are collected and displayed in a tabbed interface.
 
-CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
-```
+Stage 2 — Review & Ranking
 
-## Running the Application
+Each council member receives:
 
-**Option 1: Use the start script**
-```bash
-./start.sh
-```
+The answers produced by the other models
 
-**Option 2: Run manually**
+With identities anonymized
 
-Terminal 1 (Backend):
-```bash
-uv run python -m backend.main
-```
+Each LLM evaluates the responses and ranks them according to:
 
-Terminal 2 (Frontend):
-```bash
-cd frontend
-npm run dev
-```
+Accuracy
 
-Then open http://localhost:5173 in your browser.
+Insight
 
-## Tech Stack
+Rankings are sent back to the orchestrator.
 
-- **Backend:** FastAPI (Python 3.10+), async httpx, OpenRouter API
-- **Frontend:** React + Vite, react-markdown for rendering
-- **Storage:** JSON files in `data/conversations/`
-- **Package Management:** uv for Python, npm for JavaScript
+This stage introduces self-critique and cross-evaluation, which is a key aspect of the project.
+
+Stage 3 — Chairman Final Answer
+
+A dedicated Chairman LLM:
+
+Receives all original responses
+
+Receives all rankings
+
+The Chairman does not generate an initial answer.
+
+Its sole responsibility is to synthesize everything into a final response presented to the user.
+
+System Architecture
+
+The system is composed of four main layers:
+
+1. Council Member Services
+
+Each council member runs as an independent FastAPI service, exposing a simple /chat endpoint.
+
+A typical council service:
+
+Uses FastAPI
+
+Calls a local Ollama instance
+
+Runs a specific model (e.g. phi3, llama3, mistral)
+
+Can be deployed on its own machine
+
+Each service is stateless and only responsible for:
+
+Receiving messages
+
+Querying its local LLM
+
+Returning the generated content
+
+2. Chairman Service
+
+The Chairman:
+
+Runs as a separate FastAPI service
+
+Uses its own model instance
+
+Does not participate in Stage 1
+
+Only performs synthesis in Stage 3
+
+In our implementation, the Chairman uses Mistral, chosen for its strong summarization and reasoning abilities.
+
+3. Backend Orchestrator
+
+The backend orchestrator coordinates the entire workflow:
+
+Dispatches the user query to all council members
+
+Collects first-stage answers
+
+Redistributes responses for review
+
+Aggregates rankings
+
+Calls the Chairman for final synthesis
+
+Persists conversation data
+
+The orchestrator is configured through a central configuration file that defines:
+
+Council members
+
+Chairman
+
+REST endpoints
+
+Storage location
+
+This design makes the system modular and extensible.
+
+4. Frontend
+
+The frontend provides a simple ChatGPT-like interface that allows users to:
+
+Submit prompts
+
+View each council member’s response
+
+Inspect review and ranking results
+
+Read the Chairman’s final answer
+
+The UI emphasizes transparency of reasoning, not just the final output.
+
+Distributed Deployment
+Models Used
+
+We used three different local LLMs, each running on a separate machine:
+
+Role	Model	Runtime
+Council Member 1	phi3:latest	Ollama
+Council Member 2	llama3.1:8b	Ollama
+Council Member 3	mistral:latest	Ollama
+Chairman	mistral:latest	Ollama
+
+This ensures:
+
+Model diversity
+
+Hardware separation
+
+Real distributed execution
+
+Machine Distribution
+
+Each council LLM runs on a different machine
+
+The Chairman runs on a dedicated machine
+
+All components communicate via REST APIs
+
+The frontend and orchestrator connect transparently to all services
+
+This fully satisfies the distributed architecture requirement.
+
+Configuration
+
+The backend configuration defines:
+
+Council members
+
+Chairman
+
+Service endpoints
+
+Data storage paths
+
+Each model is referenced by name and mapped to a REST endpoint, allowing easy replacement or extension without code changes.
+
+Conversation data (responses, rankings, final answers) is stored locally to enable:
+
+Debugging
+
+Replay
+
+Analysis
+
+End-to-End Execution
+
+When the system is running:
+
+User submits a prompt
+
+All council members respond independently
+
+Responses are reviewed and ranked
+
+Chairman synthesizes the final answer
+
+User can inspect all intermediate steps
+
+Everything runs locally, distributed, and end-to-end functional.
+
+Improvements Over the Original Implementation
+
+Compared to the original cloud-based LLM Council:
+
+Fully local inference (no OpenRouter, no OpenAI)
+
+True distributed deployment across machines
+
+Clear separation between:
+
+Council members
+
+Chairman
+
+Orchestrator
+
+More transparent architecture
+
+Easier experimentation with different models
+
+Learning Outcomes
+
+This project allowed us to:
+
+Design a distributed AI system
+
+Deploy and manage multiple local LLMs
+
+Build REST-based AI services
+
+Implement multi-agent critique workflows
+
+Understand the limitations and strengths of different models
+
+Work collaboratively on a non-trivial codebase
+
+Generative AI Usage Statement
+
+Generative AI tools were used transparently in this project.
+
+They assisted with:
+
+Code refactoring
+
+Documentation drafting
+
+Debugging
+
+Architectural discussions
+
+All final decisions, integrations, and validations were performed by the team.
+
+Conclusion
+
+This project demonstrates that collaborative multi-LLM systems can be built locally, distributed, and without cloud dependency, while preserving advanced reasoning workflows such as self-review and synthesis.
+
+The LLM Council architecture provides a strong foundation for future experimentation in multi-agent AI systems.
