@@ -1,7 +1,7 @@
 🏛️ LLM Council — Local & Distributed Multi-LLM System
 Project Overview
 
-This project implements a local and distributed version of the LLM Council, inspired by Andrej Karpathy’s idea of combining multiple Large Language Models (LLMs) to improve reasoning quality.
+This project is inspired by Andrej Karpathy’s idea of combining multiple Large Language Models (LLMs) to improve reasoning quality. We started from the original GitHub code and then refactored and modified it to run entirely locally and in a distributed setup.
 
 Rather than relying on a single model, the system orchestrates several locally deployed LLMs, each running as an independent service. These models collaborate through a three-stage workflow that includes independent answer generation, peer review between models, and final synthesis by a dedicated Chairman model.
 
